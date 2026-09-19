@@ -1,6 +1,10 @@
 import { confidence, scoreEvidence } from './scoring.js';
 export type Sighting = { location_id: number; reporter_user_id: number; created_at: string; expires_at: string; locations: { floor: number; room: number } };
 export type Vote = { location_id: number; user_id: number; vote_type: string; created_at: string };
+// Reserved room 0 represents the named office location, not a physical floor/room.
+export function locationLabel(floor: number, room: number) {
+  return room === 0 ? '🏠 At base · Dean’s office' : `📍 Floor ${floor} · Room ${room}`;
+}
 export function rankCards(sightings: Sighting[], votes: Vote[], now: number, ttl: number) {
   const groups = new Map<number, Sighting[]>();
   for (const s of sightings) {
@@ -23,5 +27,5 @@ export function rankCards(sightings: Sighting[], votes: Vote[], now: number, ttl
 }
 export function cardText(card: ReturnType<typeof rankCards>[number]) {
   const trust = { LOW: '🟠 Unconfirmed', MEDIUM: '🟡 Likely', HIGH: '🟢 Well supported' }[card.level];
-  return `📍 Floor ${card.floor} · Room ${card.room}\n${trust} · ${card.minutesAgo === 0 ? 'just now' : card.minutesAgo + 'm ago'}\n👀 ${card.reports} ${card.reports === 1 ? 'reporter' : 'reporters'} · votes below`;
+  return `${locationLabel(card.floor, card.room)}\n${trust} · ${card.minutesAgo === 0 ? 'just now' : card.minutesAgo + 'm ago'}\n👀 ${card.reports} ${card.reports === 1 ? 'reporter' : 'reporters'} · votes below`;
 }

@@ -4,10 +4,11 @@ export function mainMenu() {
   return new InlineKeyboard()
     .add({ text: '🔎 Find dean', callback_data: 'latest', style: 'primary' })
     .add({ text: '📍 Report', callback_data: 'report', style: 'success' }).row()
+    .add({ text: '🏠 At base', callback_data: 'base', style: 'success' }).row()
     .text('☕ Coffee', 'donate').text('❔ Help', 'help');
 }
 export function floorMenu() {
-  const kb = new InlineKeyboard();
+  const kb = new InlineKeyboard().add({ text: '🏠 At base', callback_data: 'base', style: 'success' }).row();
   floors.forEach((floor, i) => { kb.text('Floor ' + floor, 'floor:' + floor); if (i % 2) kb.row(); });
   return kb.text('⌂ Menu', 'home');
 }
@@ -22,5 +23,5 @@ export function evidenceMenu(id: string, confirms = 0, rejects = 0, left = 0) {
     .add({ text: `❌ Nope · ${rejects}`, callback_data: `vote:reject:${id}`, style: 'danger' })
     .text(`🚶 Left · ${left}`, `vote:left:${id}`).row()
     .text('↻ Refresh', 'latest').text('📍 Report', 'report').row()
-    .text('⌂ Menu', 'home');
+    .text('🏠 At base', 'base').text('⌂ Menu', 'home');
 }

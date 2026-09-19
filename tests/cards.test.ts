@@ -5,6 +5,12 @@ const now = Date.parse('2026-09-20T00:00:00Z');
 const ttl = 600000;
 const sighting: Sighting = { location_id:1, reporter_user_id:1, created_at:new Date(now-60000).toISOString(), expires_at:new Date(now+60000).toISOString(), locations:{floor:1,room:104} };
 describe('live evidence cards', () => {
+  it('shows the named office without an invented physical room', () => {
+    const card = rankCards([{...sighting, locations:{floor:1,room:0}}],[],now,ttl)[0];
+    expect(cardText(card)).toContain('At base · Dean’s office');
+    expect(cardText(card)).not.toContain('Room 0');
+    expect(evidenceMenu('1').inline_keyboard.flat().some(b=>'callback_data' in b && b.callback_data==='base')).toBe(true);
+  });
   it('counts independent reporters instead of repeated submissions', () => {
     const cards=rankCards([sighting,sighting,{...sighting,reporter_user_id:2}],[],now,ttl);
     expect(cards[0].reports).toBe(2);
