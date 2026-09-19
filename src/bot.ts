@@ -1,12 +1,32 @@
 import { Bot, Context, GrammyError } from 'grammy';
 import { config } from './config.js';
 import { supabase } from './supabase.js';
-import { mainMenu, floorMenu, roomMenu, evidenceMenu } from './keyboards.js';
+import { mainMenu, floorMenu, roomMenu, evidenceMenu, languageMenu } from './keyboards.js';
+import { copy, languageOf, type Language } from './i18n.js';
 import { roomsForFloor } from './locations.js';
 import { rankCards, cardText, locationLabel, type Sighting, type Vote } from './cards.js';
 
-export const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
-async function show(ctx: Context, text: string, keyboard = mainMenu()) {
+class BotContext extends Context {
+  lang: Language = 'en';
+  savedLanguage = false;
+  userId?: number;
+}
+export const bot = new Bot(config.TELEGRAM_BOT_TOKEN, { ContextConstructor: BotContext });
+bot.use(async (ctx, next) => {
+  ctx.lang = languageOf(ctx.from?.language_code);
+  if (ctx.callbackQuery) await ctx.answerCallbackQuery().catch(() => undefined);
+  if (ctx.from) {
+    const { data } = await supabase.from('users').select('id,language_code').eq('telegram_user_id', ctx.from.id).maybeSingle();
+    if (data) {
+      ctx.userId = data.id;
+      ctx.savedLanguage = ['en','ru','uz'].includes(data.language_code);
+      if (ctx.savedLanguage) ctx.lang = data.language_code as Language;
+    }
+  }
+  try { await next(); }
+  catch { console.error('Bot action failed'); await show(ctx, copy[ctx.lang].error); }
+});
+async function show(ctx: BotContext, text: string, keyboard = mainMenu(ctx.lang)) {
   try {
     if (ctx.callbackQuery?.message) await ctx.editMessageText(text, { reply_markup: keyboard });
     else await ctx.reply(text, { reply_markup: keyboard });
@@ -15,13 +35,14 @@ async function show(ctx: Context, text: string, keyboard = mainMenu()) {
     throw err;
   }
 }
-async function ensureUser(ctx: Context) {
+async function ensureUser(ctx: BotContext) {
+  if (ctx.userId) return ctx.userId;
   if (!ctx.from) throw new Error('Missing user');
   const { data, error } = await supabase.from('users').upsert({ telegram_user_id: ctx.from.id }, { onConflict: 'telegram_user_id' }).select('id').single();
   if (error || !data) throw new Error('User lookup failed');
   return data.id as number;
 }
-async function latest(ctx: Context, note = '') {
+async function latest(ctx: BotContext, note = '') {
   const now = Date.now();
   const ttl = config.REPORT_EXPIRY_MINUTES * 60000;
   const [s, v] = await Promise.all([
@@ -31,27 +52,32 @@ async function latest(ctx: Context, note = '') {
   if (s.error || v.error) throw new Error('Evidence lookup failed');
   const cards = rankCards(s.data as unknown as Sighting[], v.data as Vote[], now, ttl);
   const best = cards[0];
-  if (!best) return show(ctx, '🤷 No fresh sightings. Seen them?');
-  let text = cardText(best);
-  if (cards[1] && best.score - cards[1].score <= 2) text += `\n⚠️ Also reported: ${locationLabel(cards[1].floor, cards[1].room)}`;
+  if (!best) return show(ctx, copy[ctx.lang].empty);
+  let text = cardText(best, ctx.lang);
+  if (cards[1] && best.score - cards[1].score <= 2) text += `\n${copy[ctx.lang].also} ${locationLabel(cards[1].floor, cards[1].room, ctx.lang)}`;
   if (note) text += '\n' + note;
-  await show(ctx, text, evidenceMenu(String(best.id), best.confirms, best.rejects, best.left));
+  await show(ctx, text, evidenceMenu(String(best.id), best.confirms, best.rejects, best.left, ctx.lang));
 }
 
-// Acknowledge taps immediately; database work then updates the same message.
-bot.on('callback_query:data', async (ctx, next) => {
-  await ctx.answerCallbackQuery().catch(() => undefined);
-  try { await next(); }
-  catch { console.error('Bot action failed'); await show(ctx, '⚠️ Couldn’t finish. Try again.'); }
+const chooseLanguage = (ctx: BotContext) => show(ctx, '🌐 Choose language / Выберите язык / Tilni tanlang', languageMenu());
+bot.command('start', ctx => ctx.savedLanguage ? show(ctx, copy[ctx.lang].welcome) : chooseLanguage(ctx));
+bot.command(['menu','cancel'], ctx => show(ctx, copy[ctx.lang].welcome));
+bot.command('language', chooseLanguage);
+bot.callbackQuery('language', chooseLanguage);
+bot.callbackQuery(/^lang:(en|ru|uz)$/, async ctx => {
+  const lang = ctx.match[1] as Language;
+  const { error } = await supabase.from('users').upsert({ telegram_user_id:ctx.from.id, language_code:lang },{onConflict:'telegram_user_id'});
+  if (error) return show(ctx, copy[lang].saveError, languageMenu());
+  ctx.lang = lang;
+  await show(ctx, copy[lang].languageSaved + '\n' + copy[lang].welcome);
 });
-bot.command(['start','menu','cancel'], ctx => show(ctx, '👀 Seen the dean?'));
-bot.command('help', ctx => show(ctx, '📍 Pick floor → room.\n✅ Vote only if you saw them.\n⏳ Sightings expire. Reports can be wrong.'));
+bot.command('help', ctx => show(ctx, copy[ctx.lang].helpText));
 bot.command('where', ctx => latest(ctx));
-bot.command('report', ctx => show(ctx, '📍 Which floor?', floorMenu()));
-bot.callbackQuery('home', ctx => show(ctx, '👀 Seen the dean?'));
-bot.callbackQuery('report', ctx => show(ctx, '📍 Which floor?', floorMenu()));
-bot.callbackQuery(/^floor:([1-4])$/, ctx => show(ctx, `📍 Floor ${ctx.match[1]} · Pick room`, roomMenu(Number(ctx.match[1]))));
-async function reportLocation(ctx: Context, floor: number, room: number) {
+bot.command('report', ctx => show(ctx, copy[ctx.lang].chooseFloor, floorMenu(ctx.lang)));
+bot.callbackQuery('home', ctx => show(ctx, copy[ctx.lang].welcome));
+bot.callbackQuery('report', ctx => show(ctx, copy[ctx.lang].chooseFloor, floorMenu(ctx.lang)));
+bot.callbackQuery(/^floor:([1-4])$/, ctx => show(ctx, `📍 ${copy[ctx.lang].floor} ${ctx.match[1]} · ${copy[ctx.lang].chooseRoom}`, roomMenu(Number(ctx.match[1]), ctx.lang)));
+async function reportLocation(ctx: BotContext, floor: number, room: number) {
   const [userId, result] = await Promise.all([
     ensureUser(ctx),
     supabase.from('locations').upsert({ building:1, floor, room, is_active:true },{onConflict:'building,floor,room'}).select('id').single()
@@ -59,15 +85,15 @@ async function reportLocation(ctx: Context, floor: number, room: number) {
   if (result.error || !result.data) throw new Error('Location lookup failed');
   const { data: previous, error: previousError } = await supabase.from('sightings').select('id').eq('reporter_user_id',userId).eq('location_id',result.data.id).eq('status','active').gt('expires_at',new Date().toISOString()).limit(1);
   if (previousError) throw new Error('Report lookup failed');
-  if (previous?.length) return show(ctx, `✅ Already reported\n${locationLabel(floor, room)}`);
+  if (previous?.length) return show(ctx, `${copy[ctx.lang].already}\n${locationLabel(floor, room, ctx.lang)}`);
   const { error } = await supabase.from('sightings').insert({ location_id:result.data.id,reporter_user_id:userId,expires_at:new Date(Date.now()+config.REPORT_EXPIRY_MINUTES*60000).toISOString(),status:'active' });
   if (error) throw new Error('Report save failed');
-  await show(ctx, `✅ Reported\n${locationLabel(floor, room)}`);
+  await show(ctx, `${copy[ctx.lang].reported}\n${locationLabel(floor, room, ctx.lang)}`);
 }
 bot.callbackQuery('base', ctx => reportLocation(ctx, 1, 0));
 bot.callbackQuery(/^room:([1-4]):(\d+)$/, async ctx => {
   const floor = Number(ctx.match[1]), room = Number(ctx.match[2]);
-  if (!roomsForFloor(floor).includes(room)) return show(ctx, 'Choose a room below.', roomMenu(floor));
+  if (!roomsForFloor(floor).includes(room)) return show(ctx, copy[ctx.lang].chooseRoom, roomMenu(floor, ctx.lang));
   await reportLocation(ctx, floor, room);
 });
 bot.callbackQuery('latest', ctx => latest(ctx));
@@ -78,11 +104,11 @@ bot.callbackQuery(/^vote:(confirm|reject|left):(\d+)$/, async ctx => {
     supabase.from('sightings').select('id').eq('location_id',id).eq('status','active').gt('expires_at',new Date().toISOString()).limit(1)
   ]);
   if (active.error) throw new Error('Report lookup failed');
-  if (!active.data?.length) return latest(ctx, '⌛ That sighting expired.');
+  if (!active.data?.length) return latest(ctx, copy[ctx.lang].expired);
   const { error } = await supabase.from('sighting_votes').upsert({location_id:id,user_id:userId,vote_type:ctx.match[1],created_at:new Date().toISOString()},{onConflict:'location_id,user_id'});
   if (error) throw new Error('Vote save failed');
-  await latest(ctx, '✓ Your vote is saved');
+  await latest(ctx, copy[ctx.lang].saved);
 });
-bot.callbackQuery('help', ctx => show(ctx, '📍 Floor → room. Done.\n✅ Vote only on what you saw.\n⏳ Old reports disappear.'));
-bot.callbackQuery('donate', ctx => show(ctx, '☕ Coffee fund brewing…\nDonations aren’t enabled yet.'));
-bot.on('callback_query:data', ctx => show(ctx, 'That button is old. Try these 👇'));
+bot.callbackQuery('help', ctx => show(ctx, copy[ctx.lang].helpText));
+bot.callbackQuery('donate', ctx => show(ctx, copy[ctx.lang].donate));
+bot.on('callback_query:data', ctx => show(ctx, copy[ctx.lang].old));

@@ -1,9 +1,10 @@
+import { copy, reporters, type Language } from './i18n.js';
 import { confidence, scoreEvidence } from './scoring.js';
 export type Sighting = { location_id: number; reporter_user_id: number; created_at: string; expires_at: string; locations: { floor: number; room: number } };
 export type Vote = { location_id: number; user_id: number; vote_type: string; created_at: string };
 // Reserved room 0 represents the named office location, not a physical floor/room.
-export function locationLabel(floor: number, room: number) {
-  return room === 0 ? '🏠 At base · Dean’s office' : `📍 Floor ${floor} · Room ${room}`;
+export function locationLabel(floor: number, room: number, lang: Language = 'en') {
+  return room === 0 ? copy[lang].office : `📍 ${copy[lang].floor} ${floor} · ${copy[lang].room} ${room}`;
 }
 export function rankCards(sightings: Sighting[], votes: Vote[], now: number, ttl: number) {
   const groups = new Map<number, Sighting[]>();
@@ -25,7 +26,7 @@ export function rankCards(sightings: Sighting[], votes: Vote[], now: number, ttl
       level: confidence(evidence), score: scoreEvidence(evidence) };
   }).sort((a,b) => b.score - a.score || b.latest - a.latest);
 }
-export function cardText(card: ReturnType<typeof rankCards>[number]) {
-  const trust = { LOW: '🟠 Unconfirmed', MEDIUM: '🟡 Likely', HIGH: '🟢 Well supported' }[card.level];
-  return `${locationLabel(card.floor, card.room)}\n${trust} · ${card.minutesAgo === 0 ? 'just now' : card.minutesAgo + 'm ago'}\n👀 ${card.reports} ${card.reports === 1 ? 'reporter' : 'reporters'} · votes below`;
+export function cardText(card: ReturnType<typeof rankCards>[number], lang: Language = 'en') {
+  const trust = { LOW: copy[lang].low, MEDIUM: copy[lang].medium, HIGH: copy[lang].high }[card.level];
+  return `${locationLabel(card.floor, card.room, lang)}\n${trust} · ${card.minutesAgo === 0 ? copy[lang].now : card.minutesAgo + copy[lang].ago}\n👀 ${reporters(card.reports, lang)} · ${copy[lang].votes}`;
 }
