@@ -7,7 +7,7 @@ const sighting: Sighting = { location_id:1, reporter_user_id:1, created_at:new D
 describe('live evidence cards', () => {
   it('shows the named office without an invented physical room', () => {
     const card = rankCards([{...sighting, locations:{floor:1,room:0}}],[],now,ttl)[0];
-    expect(cardText(card)).toContain('At base · Dean’s office');
+    expect(cardText(card)).toContain('At base · Deputy dean’s office');
     expect(cardText(card)).not.toContain('Room 0');
     expect(evidenceMenu('1').inline_keyboard.flat().some(b=>'callback_data' in b && b.callback_data==='base')).toBe(true);
   });
