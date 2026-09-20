@@ -60,7 +60,7 @@ async function latest(ctx: BotContext, note = '') {
 }
 
 const chooseLanguage = (ctx: BotContext) => show(ctx, '🌐 Choose language / Выберите язык / Tilni tanlang', languageMenu());
-bot.command('start', ctx => ctx.savedLanguage ? show(ctx, copy[ctx.lang].privacy) : show(ctx, copy[ctx.lang].privacy + '\n\n🌐 Choose language / Выберите язык / Tilni tanlang', languageMenu()));
+bot.command('start', ctx => ctx.savedLanguage ? show(ctx, copy[ctx.lang].welcome) : chooseLanguage(ctx));
 bot.command(['menu','cancel'], ctx => show(ctx, copy[ctx.lang].welcome));
 bot.command('language', chooseLanguage);
 bot.callbackQuery('language', chooseLanguage);
@@ -69,10 +69,9 @@ bot.callbackQuery(/^lang:(en|ru|uz)$/, async ctx => {
   const { error } = await supabase.from('users').upsert({ telegram_user_id:ctx.from.id, language_code:lang },{onConflict:'telegram_user_id'});
   if (error) return show(ctx, copy[lang].saveError, languageMenu());
   ctx.lang = lang;
-  await show(ctx, copy[lang].languageSaved + '\n\n' + copy[lang].privacy);
+  await show(ctx, copy[lang].languageSaved + '\n' + copy[lang].welcome);
 });
-bot.command('privacy', ctx => show(ctx, copy[ctx.lang].privacy));
-bot.command('help', ctx => show(ctx, copy[ctx.lang].helpText + '\n\n' + copy[ctx.lang].privacy));
+bot.command('help', ctx => show(ctx, copy[ctx.lang].helpText));
 bot.command('where', ctx => latest(ctx));
 bot.command('report', ctx => show(ctx, copy[ctx.lang].chooseFloor, floorMenu(ctx.lang)));
 bot.callbackQuery('home', ctx => show(ctx, copy[ctx.lang].welcome));
@@ -110,6 +109,6 @@ bot.callbackQuery(/^vote:(confirm|reject|left):(\d+)$/, async ctx => {
   if (error) throw new Error('Vote save failed');
   await latest(ctx, copy[ctx.lang].saved);
 });
-bot.callbackQuery('help', ctx => show(ctx, copy[ctx.lang].helpText + '\n\n' + copy[ctx.lang].privacy));
+bot.callbackQuery('help', ctx => show(ctx, copy[ctx.lang].helpText));
 bot.callbackQuery('donate', ctx => show(ctx, copy[ctx.lang].donate));
 bot.on('callback_query:data', ctx => show(ctx, copy[ctx.lang].old));

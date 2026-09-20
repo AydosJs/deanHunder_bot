@@ -5,7 +5,6 @@ export function languageOf(value?: string | null): Language {
 }
 export const copy = {
   en: {
-    privacy:'🕶️ Private from other students—not fully anonymous.\nReports and votes don’t display your name to other students. The bot stores your Telegram ID and links it to your activity; operators with database access can identify it.',
     welcome:'👀 Seen the deputy dean?', find:'🔎 Find deputy dean', report:'📍 Report', base:'🏠 At base',
     coffee:'☕ Coffee', help:'❔ Help', menu:'⌂ Menu', floors:'‹ Floors', floor:'Floor', room:'Room',
     here:'✅ Here', nope:'❌ Nope', left:'🚶 Left', refresh:'↻ Refresh',
@@ -20,7 +19,6 @@ export const copy = {
     saveError:'⚠️ Couldn’t save your language. Try again.'
   },
   ru: {
-    privacy:'🕶️ Скрыто от других студентов, но не полностью анонимно.\nДругие студенты не видят ваше имя в сообщениях и голосах. Бот хранит ваш Telegram ID и связывает его с активностью; операторы с доступом к базе могут установить эту связь.',
     welcome:'👀 Видели замдекана?', find:'🔎 Где замдекана?', report:'📍 Сообщить', base:'🏠 На базе',
     coffee:'☕ На кофе', help:'❔ Помощь', menu:'⌂ Меню', floors:'‹ Этажи', floor:'Этаж', room:'Кабинет',
     here:'✅ Здесь', nope:'❌ Нет', left:'🚶 Ушёл', refresh:'↻ Обновить',
@@ -35,7 +33,6 @@ export const copy = {
     saveError:'⚠️ Не удалось сохранить язык. Попробуйте ещё раз.'
   },
   uz: {
-    privacy:'🕶️ Boshqa talabalardan yashirin, lekin to‘liq anonim emas.\nXabar va ovozlaringizda ismingiz boshqa talabalarga ko‘rinmaydi. Bot Telegram ID’ingizni saqlaydi va faoliyatingiz bilan bog‘laydi; bazaga kirish huquqi bor operatorlar bu bog‘lanishni ko‘ra oladi.',
     welcome:'👀 Zamdekanni ko‘rdingizmi?', find:'🔎 Zamdekan qayerda?', report:'📍 Xabar berish', base:'🏠 O‘z xonasida',
     coffee:'☕ Qahva uchun', help:'❔ Yordam', menu:'⌂ Menyu', floors:'‹ Qavatlar', floor:'Qavat', room:'Xona',
     here:'✅ Shu yerda', nope:'❌ Yo‘q', left:'🚶 Ketdi', refresh:'↻ Yangilash',
