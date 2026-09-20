@@ -29,7 +29,8 @@ describe('live evidence cards', () => {
   });
   it('offers the full configured room range with valid callback payloads', () => {
     const buttons=roomMenu(4).inline_keyboard.flat();
-    expect(buttons.some(b=>b.text==='450')).toBe(true);
+    expect(buttons.some(b=>b.text==='1/434-30')).toBe(true);
+    expect(buttons.some(b=>b.text==='450')).toBe(false);
     expect(buttons.every(b=>!('callback_data' in b)||Buffer.byteLength(b.callback_data)<=64)).toBe(true);
   });
 });

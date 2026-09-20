@@ -1,10 +1,11 @@
 import { copy, reporters, type Language } from './i18n.js';
 import { confidence, scoreEvidence } from './scoring.js';
+import { roomLabel } from './locations.js';
 export type Sighting = { location_id: number; reporter_user_id: number; created_at: string; expires_at: string; locations: { floor: number; room: number } };
 export type Vote = { location_id: number; user_id: number; vote_type: string; created_at: string };
 // Reserved room 0 represents the named office location, not a physical floor/room.
 export function locationLabel(floor: number, room: number, lang: Language = 'en') {
-  return room === 0 ? copy[lang].office : `📍 ${copy[lang].floor} ${floor} · ${copy[lang].room} ${room}`;
+  return room === 0 ? copy[lang].office : `📍 ${copy[lang].floor} ${floor} · ${roomLabel(floor, room)}`;
 }
 export function rankCards(sightings: Sighting[], votes: Vote[], now: number, ttl: number) {
   const groups = new Map<number, Sighting[]>();

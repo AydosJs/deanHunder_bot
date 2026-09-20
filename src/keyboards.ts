@@ -1,6 +1,6 @@
 import { copy, type Language } from './i18n.js';
 import { InlineKeyboard } from 'grammy';
-import { floors, roomsForFloor } from './locations.js';
+import { floors, roomsForFloor, roomLabel } from './locations.js';
 export function mainMenu(lang: Language = 'en') {
   return new InlineKeyboard()
     .add({ text: copy[lang].find, callback_data: 'latest', style: 'primary' })
@@ -15,7 +15,7 @@ export function floorMenu(lang: Language = 'en') {
 }
 export function roomMenu(floor: number, lang: Language = 'en') {
   const kb = new InlineKeyboard();
-  roomsForFloor(floor).forEach((room, i) => { kb.text(String(room), `room:${floor}:${room}`); if ((i + 1) % 5 === 0) kb.row(); });
+  roomsForFloor(floor).forEach((room, i) => { kb.text(roomLabel(floor, room), `room:${floor}:${room}`); if ((i + 1) % 2 === 0) kb.row(); });
   return kb.row().text(copy[lang].floors, 'report').text(copy[lang].menu, 'home');
 }
 export function evidenceMenu(id: string, confirms = 0, rejects = 0, left = 0, lang: Language = 'en') {
